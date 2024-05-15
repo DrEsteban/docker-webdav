@@ -7,13 +7,15 @@ FROM httpd:alpine
 # Copy in our configuration files.
 COPY conf/ conf/
 
+USER root
+
 RUN set -ex; \
     # Create empty default DocumentRoot.
     mkdir -p "/var/www/html"; \
     # Create directories for Dav data and lock database.
     mkdir -p "/var/lib/dav/data"; \
     touch "/var/lib/dav/DavLock"; \
-    chown -R www-data:www-data "/var/lib/dav"; \
+    #chown -R www-data:www-data "/var/lib/dav"; \
     \
     # Enable DAV modules.
     for i in dav dav_fs; do \
@@ -31,10 +33,10 @@ RUN set -ex; \
     done; \
     \
     # Run httpd as "www-data" (instead of "daemon").
-    for i in User Group; do \
-        sed -i -e "s|^$i .*|$i www-data|" "conf/httpd.conf"; \
-    done; \
-    \
+    # for i in User Group; do \
+    #     sed -i -e "s|^$i .*|$i www-data|" "conf/httpd.conf"; \
+    # done; \
+    # \
     # Include enabled configs and sites.
     printf '%s\n' "Include conf/conf-enabled/*.conf" \
         >> "conf/httpd.conf"; \
@@ -50,6 +52,7 @@ RUN set -ex; \
     apk add --no-cache openssl
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 EXPOSE 80/tcp 443/tcp
 ENTRYPOINT [ "docker-entrypoint.sh" ]
 CMD [ "httpd-foreground" ]
