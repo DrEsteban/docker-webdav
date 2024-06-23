@@ -82,6 +82,11 @@ jobs:
           #cache-from: type=gha
           #cache-to: type=gha,mode=max
 
+      - name: Print tags summary
+        run: |
+          all_tags="${{ steps.meta.outputs.tags }}"
+          echo -e "### Pushed:\n$(echo $all_tags | jq -Rrsc 'split(" ")[] | "- \(.)"')" >> $GITHUB_STEP_SUMMARY
+
       - name: Generate image artifact attestation
         uses: actions/attest-build-provenance@v1
         with:
