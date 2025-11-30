@@ -101,16 +101,45 @@ fi
 # Add apache user to additional groups
 if [ -n "$ADD_GROUPS" ]
 then
-    echo "Adding www-data to supplementary groups: $ADD_GROUPS"
+    echo "Configuring groups for www-data from ADD_GROUPS='$ADD_GROUPS'"
 
-    # Convert comma-separated list into space-separated
-    GROUP_LIST=$(echo "$ADD_GROUPS" | tr ',' ' ')
-
-    for grp in $GROUP_LIST
+    # Turn "name1:1000,name2:1001" into separate tokens
+    for spec in $(echo "$ADD_GROUPS" | tr ',' ' ')
     do
-        echo " -> Adding to group: $grp"
-        usermod -aG "$grp" www-data 2>/dev/null \
-            || echo "Warning: failed to add www-data to group '$grp'"
+        name="${spec%%:*}"
+        gid="${spec##*:}"
+
+        if [ -z "$name" ] || [ -z "$gid" ]
+        then
+            echo "Skipping invalid group spec '$spec' (expected name:gid)"
+            continue
+        fi
+
+        echo "Handling group '$name' with GID $gid"
+
+        # Check if group already exists (by gid or name)
+        if getent group "$gid" >/dev/null 2>&1 || getent group "$name" >/dev/null 2>&1
+        then
+            echo "  Group already exists, not creating"
+        else
+            echo "  Creating group '$name' with GID $gid"
+            if command -v addgroup >/dev/null 2>&1
+            then
+                addgroup -g "$gid" "$name"
+            elif command -v groupadd >/dev/null 2>&1
+            then
+                groupadd -g "$gid" "$name"
+            else
+                echo "  ERROR: neither addgroup nor groupadd found; cannot create group" >&2
+                continue
+            fi
+        fi
+
+        echo "  Adding www-data to group '$name'"
+        if ! usermod -aG "$name" www-data 2>/dev/null
+        then
+            echo "  WARNING: failed to add www-data to '$name'" >&2
+        fi
     done
 fi
 
