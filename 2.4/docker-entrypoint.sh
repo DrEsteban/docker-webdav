@@ -98,6 +98,26 @@ if [ -e /privkey.pem ] && [ -e /cert.pem ]; then
         "$HTTPD_PREFIX/conf/sites-enabled"
 fi
 
+# Make httpd run as root (NOT ADVISED!)
+if [ -n "$RUN_AS_ROOT" ]
+then
+  echo "RUN_AS_ROOT is set — switching Apache to run as root"
+
+  # Update RedHat-style httpd.conf if present
+  if [ -f $HTTPD_PREFIX/conf/httpd.conf ]
+  then
+    sed -i 's/^\s*User\s\+.*/User root/' $HTTPD_PREFIX/conf/httpd.conf
+    sed -i 's/^\s*Group\s\+.*/Group root/' $HTTPD_PREFIX/conf/httpd.conf
+  fi
+
+  # Disable envvars override (Debian/Ubuntu)
+  if [ -f $HTTPD_PREFIX/bin/envvars ]
+  then
+    sed -i 's/^export APACHE_RUN_USER=.*/export APACHE_RUN_USER=root/' $HTTPD_PREFIX/bin/envvars
+    sed -i 's/^export APACHE_RUN_GROUP=.*/export APACHE_RUN_GROUP=root/' $HTTPD_PREFIX/bin/envvars
+  fi
+fi
+
 # Create directories for Dav data and lock database.
 [ ! -d "/var/lib/dav/data" ] && mkdir -p "/var/lib/dav/data"
 [ ! -e "/var/lib/dav/DavLock" ] && touch "/var/lib/dav/DavLock"
