@@ -98,24 +98,20 @@ if [ -e /privkey.pem ] && [ -e /cert.pem ]; then
         "$HTTPD_PREFIX/conf/sites-enabled"
 fi
 
-# Make httpd run as root (NOT ADVISED!)
-if [ -n "$RUN_AS_ROOT" ]
+# Add apache user to additional groups
+if [ -n "$ADD_GROUPS" ]
 then
-  echo "RUN_AS_ROOT is set — switching Apache to run as root"
+    echo "Adding www-data to supplementary groups: $ADD_GROUPS"
 
-  # Update RedHat-style httpd.conf if present
-  if [ -f $HTTPD_PREFIX/conf/httpd.conf ]
-  then
-    sed -i 's/^\s*User\s\+.*/User root/' $HTTPD_PREFIX/conf/httpd.conf
-    sed -i 's/^\s*Group\s\+.*/Group root/' $HTTPD_PREFIX/conf/httpd.conf
-  fi
+    # Convert comma-separated list into space-separated
+    GROUP_LIST=$(echo "$ADD_GROUPS" | tr ',' ' ')
 
-  # Disable envvars override (Debian/Ubuntu)
-  if [ -f $HTTPD_PREFIX/bin/envvars ]
-  then
-    sed -i 's/^export APACHE_RUN_USER=.*/export APACHE_RUN_USER=root/' $HTTPD_PREFIX/bin/envvars
-    sed -i 's/^export APACHE_RUN_GROUP=.*/export APACHE_RUN_GROUP=root/' $HTTPD_PREFIX/bin/envvars
-  fi
+    for grp in $GROUP_LIST
+    do
+        echo " -> Adding to group: $grp"
+        usermod -aG "$grp" www-data 2>/dev/null \
+            || echo "Warning: failed to add www-data to group '$grp'"
+    done
 fi
 
 # Create directories for Dav data and lock database.
